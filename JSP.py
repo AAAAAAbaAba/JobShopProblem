@@ -9,17 +9,22 @@ from General_function import *
 from GA_function import *
 import random
 import numpy as np
+import yaml
 
 
 if __name__ == '__main__':
-    target = 'la02'
+    with open(file='DATA.yaml', mode='r', encoding='UTF-8') as f:
+        data = yaml.safe_load(f)
+    target = data['TARGET']
+    generation = data['GENERATION']
+
     C_history = []
     ga = GeneticAlgorithm(target)
-
     print(f'数据集{target}理论最优值：{ga.Optimum}')
     print(f'第0代种群，Cmax={ga.C_max}')
     C_history.append(ga.C_max)
-    for gen in range(1, 501):
+
+    for gen in range(1, generation+1):
         cross_index1 = np.array(ga.Fit).argmax()
         for cross_index2 in range(ga.PopSize):
             if (random.random() <= ga.P_Cross) and (cross_index1 != cross_index2):
