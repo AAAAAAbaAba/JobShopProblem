@@ -14,8 +14,7 @@ import numpy as np
 if __name__ == '__main__':
     target = 'la02'
     C_history = []
-    J, P, jobs_num, machines_num, optimum = load_data(target)
-    ga = GeneticAlgorithm(J, P, jobs_num, machines_num, optimum)
+    ga = GeneticAlgorithm(target)
 
     print(f'数据集{target}理论最优值：{ga.Optimum}')
     print(f'第0代种群，Cmax={ga.C_max}')

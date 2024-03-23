@@ -12,14 +12,10 @@ import random
 import itertools
 
 
-class GeneticAlgorithm:
-    def __init__(self, J, P, jobs_num, machines_num, optimum, population_size=500,
-                 k_fit=100, b_fit=0, p_cross=0.8, n_cross=2, p_mutation=0.01, l_mutation=4):
-        self.J = J  # 加工机器矩阵
-        self.P = P  # 加工时间矩阵
-        self.N = jobs_num  # 工件数
-        self.M = machines_num  # 机器数
-        self.Optimum = optimum  # 理论最优目标值
+class GeneticAlgorithm(JobShopProblem):
+    def __init__(self, target, population_size=500, k_fit=100, b_fit=0, p_cross=0.8, n_cross=2, p_mutation=0.01, l_mutation=4):
+        super().__init__(target)
+
         self.PopSize = population_size  # 种群规模
         self.Pop = []  # 种群
         self.Fit = []  # 适应度列表

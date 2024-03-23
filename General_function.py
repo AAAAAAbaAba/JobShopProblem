@@ -11,44 +11,54 @@ import os
 import json
 
 
-def load_data(target):
-    with open(os.path.join(os.path.abspath('.'), '../JSPLIB/instances.json'), 'r') as f:
-        data = json.load(f)
+class JobShopProblem:
+    def __init__(self, target):
+        self.Target = target
+        self.J = np.array([])  # 加工机器矩阵
+        self.P = np.array([])  # 加工时间矩阵
+        self.N = 0  # 机器数
+        self.M = 0  # 理论最优目标值
+        self.Optimum = 0
 
-    instance = [inst for inst in data if inst['name'] == target]
-    if len(instance) == 0:
-        raise Exception(f'There is no instance named {target}')
+        self.load_data()
 
-    instance = instance[0]
-    path = os.path.abspath(os.path.join(os.path.abspath('.'), f'../JSPLIB/{instance["path"]}'))
-    optimum = instance['optimum']
+    def load_data(self):
+        with open(os.path.join(os.path.abspath('.'), '../JSPLIB/instances.json'), 'r') as f:
+            data = json.load(f)
 
-    if optimum is None:
-        if instance['bounds'] is None:
-            optimum = "nan"
-        else:
-            optimum = instance['bounds']['lower']
+        instance = [inst for inst in data if inst['name'] == self.Target]
+        if len(instance) == 0:
+            raise Exception(f'There is no instance named {self.Target}')
 
-    # 读取Target文件
-    with open(path, 'r') as file:
-        lines = file.readlines()
-    while lines[0][0] == '#':
-        lines.pop(0)
+        instance = instance[0]
+        path = os.path.abspath(os.path.join(os.path.abspath('.'), f'../JSPLIB/{instance["path"]}'))
+        self.Optimum = instance['optimum']
 
-    # 读取工件数、机器数
-    jobs_num, machines_num = map(int, lines[0].split())
-
-    # 读取J、P
-    J = np.zeros((jobs_num, len(lines[1].split()) // 2), dtype=int)
-    P = np.zeros((jobs_num, len(lines[1].split()) // 2), dtype=int)
-    for i in range(1, len(lines)):
-        data = list(map(int, lines[i].split()))
-        for j in range(len(data)):
-            if j % 2 == 0:
-                J[i - 1][j // 2] = data[j] + 1
+        if self.Optimum is None:
+            if instance['bounds'] is None:
+                self.Optimum = "nan"
             else:
-                P[i - 1][j // 2] = data[j]
-    return J, P, jobs_num, machines_num, optimum
+                self.Optimum = instance['bounds']['lower']
+
+        # 读取Target文件
+        with open(path, 'r') as file:
+            lines = file.readlines()
+        while lines[0][0] == '#':
+            lines.pop(0)
+
+        # 读取工件数、机器数
+        self.N, self.M = map(int, lines[0].split())
+
+        # 读取J、P
+        self.J = np.zeros((self.N, len(lines[1].split()) // 2), dtype=int)
+        self.P = np.zeros((self.N, len(lines[1].split()) // 2), dtype=int)
+        for i in range(1, len(lines)):
+            data = list(map(int, lines[i].split()))
+            for j in range(len(data)):
+                if j % 2 == 0:
+                    self.J[i - 1][j // 2] = data[j] + 1
+                else:
+                    self.P[i - 1][j // 2] = data[j]
 
 
 def draw_Gantt(timelist):
@@ -92,5 +102,3 @@ def draw_Gantt(timelist):
     plt.legend(handles=legend_list, title='job')
 
     plt.show()
-
-
