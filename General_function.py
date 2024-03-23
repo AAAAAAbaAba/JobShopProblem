@@ -5,7 +5,10 @@
 @IDE: PyCharm
 """
 import matplotlib.pyplot as plt
+import numpy as np
 import random
+import os
+import json
 
 
 def load_data(target):
@@ -48,9 +51,10 @@ def load_data(target):
     return J, P, jobs_num, machines_num, optimum
 
 
-def draw_Gantt():
+def draw_Gantt(timelist):
     """
     绘制
+    :param timelist:
     :return:
     """
     T = timelist.copy()
@@ -77,6 +81,7 @@ def draw_Gantt():
             #
             label = f'{job}-{operation}'
             ax.text((start_time + end_time) / 2, machine_idx, label, ha='center', va='center', color='black', fontsize=12)
+
     ax.set_yticks(range(len(T)))
     ax.set_yticklabels(f'MACHINE{i + 1}' for i in range(len(T)))
     plt.xlabel('Time')
@@ -85,5 +90,7 @@ def draw_Gantt():
     for job, color in dict(sorted(color_map.items(), key=lambda x: x[0], reverse=False)).items():
         legend_list.append(plt.Rectangle((0, 0), 1, 1, color=color, label=f'JOB{job}'))
     plt.legend(handles=legend_list, title='job')
+
+    plt.show()
 
 

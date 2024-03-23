@@ -14,7 +14,7 @@ import itertools
 
 class GeneticAlgorithm:
     def __init__(self, J, P, jobs_num, machines_num, optimum, population_size=500,
-                 k_fit=100, b_fit=0, p_cross=0.8, n_cross=50, p_mutation=0.01, l_mutation=4):
+                 k_fit=100, b_fit=0, p_cross=0.8, n_cross=2, p_mutation=0.01, l_mutation=4):
         self.J = J  # 加工机器矩阵
         self.P = P  # 加工时间矩阵
         self.N = jobs_num  # 工件数
@@ -75,7 +75,7 @@ class GeneticAlgorithm:
                 self.C_op = C_temp
                 self.C_max = C_temp.max(initial=0)
                 self.Ind_op = copy.deepcopy(self.Pop[i])
-            self.Fit.append(self.CalculateFit(C_temp.max))
+            self.Fit.append(self.CalculateFit(C_temp.max()))
 
     def Decode(self, chrom):
         """
@@ -95,7 +95,7 @@ class GeneticAlgorithm:
 
             # 寻找空闲时段插入
             start_time = max(finish_time_last_job, T[machine][-1][-1])
-            insert_index = 0
+            insert_index = len(T[machine])
             for i in range(1, len(T[machine])):
                 gap_start = max(finish_time_last_job, T[machine][i - 1][-1])
                 gap_end = T[machine][i][0]
@@ -131,16 +131,16 @@ class GeneticAlgorithm:
         # 最优父代加入临时种群
         if self.Fit[Parent1_index] >= self.Fit[Parent2_index]:
             population_temp.append(Parent1)
-            fitness_temp.appebnd(self.Fit[Parent1_index])
+            fitness_temp.append(self.Fit[Parent1_index])
         else:
             population_temp.append(Parent2)
-            fitness_temp.appebnd(self.Fit[Parent2_index])
+            fitness_temp.append(self.Fit[Parent2_index])
 
         for _ in range(self.N_Cross):
             # 1.随机划分工件集
             Jobs = list(range(self.N))
             random.shuffle(Jobs)
-            len1 = random.randint(1, n-1)  # 保证工件集J1、J2
+            len1 = random.randint(1, self.N - 1)  # 保证工件集J1、J2
             Jobs1 = Jobs[:len1]
             Jobs2 = Jobs[len1:]
 
@@ -157,11 +157,23 @@ class GeneticAlgorithm:
 
             # 3.子代加入临时种群
             population_temp.append(Child1)
-            _, C1 = self.Decode(Child1)
-            fitness_temp.append(self.CalculateFit(C1.max(initial=0)))
+            T1, C1 = self.Decode(Child1)
+            C1_max = C1.max(initial=0)
+            if C1_max < self.C_max:
+                self.T_op = T1
+                self.C_op = C1
+                self.C_max = C1_max
+                self.Ind_op = Child1
+            fitness_temp.append(self.CalculateFit(C1_max))
             population_temp.append(Child2)
-            _, C2 = self.Decode(Child1)
-            fitness_temp.append(self.CalculateFit(C2.max(initial=0)))
+            T2, C2 = self.Decode(Child2)
+            C2_max = C2.max(initial=0)
+            if C2_max < self.C_max:
+                self.T_op = T2
+                self.C_op = C2
+                self.C_max = C2_max
+                self.Ind_op = Child2
+            fitness_temp.append(self.CalculateFit(C2_max))
 
         # 选择临时种群中适应度最高的2个个体进入下一代种群
         index_new = np.array(fitness_temp).argsort()[-2:]
@@ -196,15 +208,16 @@ class GeneticAlgorithm:
             for i in range(len(each_jobs)):
                 Child_temp[index_mutation[i]] = each_jobs[i]
             population_temp.append(Child_temp)
-            _, C_temp = self.Decode(Child_temp)
-            fitness_temp.append(self.CalculateFit(C_temp.max(initial=0)))
+            T_temp, C_temp = self.Decode(Child_temp)
+            C_temp_max = C_temp.max(initial=0)
+            if C_temp_max < self.C_max:
+                self.T_op = T_temp
+                self.C_op = C_temp
+                self.C_max = C_temp_max
+                self.Ind_op = Child_temp
+            fitness_temp.append(self.CalculateFit(C_temp_max))
 
         # 选择临时种群中适应度最高的个体进入下一代种群
         index_new = np.array(fitness_temp).argmax()
         self.Pop[Parent_index] = population_temp[index_new]
         self.Fit[Parent_index] = fitness_temp[index_new]
-
-
-class Individuals:
-    def __init__(self, J, P, ):
-        pass
