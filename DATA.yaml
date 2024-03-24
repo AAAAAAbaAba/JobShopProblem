@@ -1,2 +1,13 @@
-TARGET: "la02"
+TARGET: "ft10"
 GENERATION: 500
+
+GA:
+  POPULATION_SIZE: 500
+  K_FIT: 100
+  B_FIT: 0
+  CROSS:
+    P: 0.8
+    N: 2
+  MUTATION:
+    P: 0.01
+    L: 4

@@ -110,6 +110,11 @@ class GeneticAlgorithm(JobShopProblem):
         return T, C
 
     def CalculateFit(self, p):
+        """
+        计算适应度
+        :param p:
+        :return:
+        """
         return self.K_Fit / (p + self.B_Fit)
 
     def Cross(self, Parent1_index, Parent2_index):
@@ -217,3 +222,32 @@ class GeneticAlgorithm(JobShopProblem):
         index_new = np.array(fitness_temp).argmax()
         self.Pop[Parent_index] = population_temp[index_new]
         self.Fit[Parent_index] = fitness_temp[index_new]
+
+    def ProportionalSelect(self):
+        """
+        最佳个体保存+比例选择
+        :return:
+        """
+        # 保存最佳个体
+        population_temp = [self.Ind_op]
+        fitness_temp = [self.CalculateFit(self.C_max)]
+
+        # 构造比例列表
+        fitness_proportion = np.array(self.Fit)
+        fitness_proportion = np.cumsum(fitness_proportion / np.sum(fitness_proportion))
+        # 抽取随机数
+        random_list = []
+        for _ in range(self.PopSize - 1):
+            random_list.append(random.random())
+
+        selection_list = np.sort(np.concatenate((fitness_proportion, np.array(random_list)), axis=0))
+        index_temp = 0
+        for each_number in selection_list:
+            if each_number < fitness_proportion[index_temp]:
+                population_temp.append(self.Pop[index_temp])
+                fitness_temp.append(self.Fit[index_temp])
+            elif each_number == fitness_proportion[index_temp]:
+                index_temp += 1
+
+        self.Pop = population_temp
+        self.Fit = fitness_temp
