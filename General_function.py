@@ -21,6 +21,8 @@ class JobShopProblem:
         self.Optimum = 0
 
         self.load_data()
+        self.J_R = np.flip(self.J, axis=1)
+        self.P_R = np.flip(self.P, axis=1)
 
     def load_data(self):
         with open(os.path.join(os.path.abspath('.'), '../JSPLIB/instances.json'), 'r') as f:
@@ -76,14 +78,14 @@ def draw_Gantt(timelist):
     # 每个工件一个颜色
     color_map = {}
     for machine in T:
-        for task_data in machine[1:]:
+        for task_data in machine[:]:
             job = task_data[1]
             if job not in color_map:
                 color_map[job] = (random.random(), random.random(), random.random())
 
     # 遍历机器
     for machine_idx, machine_schedule in enumerate(T):
-        for task_data in machine_schedule[1:]:
+        for task_data in machine_schedule[:]:
             start_time, job, operation, end_time = task_data
             color = color_map[job]
             # 绘制Gantt图
