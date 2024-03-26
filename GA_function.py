@@ -73,83 +73,6 @@ class GeneticAlgorithm(JobShopProblem):
                 self.Ind_op = copy.deepcopy(self.Pop[i])
             self.Fit.append(self.CalculateFit(C_temp.max(initial=0)))
 
-    def Decode(self, chrom):
-        """
-        反转+贪婪插入式解码获得全活动调度
-        :param chrom: 待解码的染色体序列
-        :return T: Gantt图矩阵([起始时间, 工件号, 工序号, 结束时间])
-        :return C: 完工时间矩阵
-        """
-        chrom_len = len(chrom)
-
-        C = np.zeros((self.N, self.M))
-        T = [[[0]] for _ in range(self.M)]
-        k_jobs = np.zeros(self.N, dtype=int)
-        # 反转染色体与J、P求解
-        for job in reversed(chrom):
-            machine = self.J_R[job, k_jobs[job]] - 1
-            process_time = self.P_R[job, k_jobs[job]]
-            finish_time_last_job = C[job, k_jobs[job] - 1]
-
-            # 寻找空闲时段插入
-            start_time = max(finish_time_last_job, T[machine][-1][-1])
-            insert_index = len(T[machine])
-            for i in range(1, len(T[machine])):
-                gap_start = max(finish_time_last_job, T[machine][i - 1][-1])
-                gap_end = T[machine][i][0]
-                if gap_end - gap_start >= process_time:
-                    start_time = gap_start
-                    insert_index = i
-                    break
-            end_time = start_time + process_time
-            C[job, k_jobs[job]] = end_time
-            T[machine].insert(insert_index, [start_time, job, k_jobs[job], end_time])
-            k_jobs[job] += 1
-        for i in range(len(T)):
-            T[i].pop(0)
-
-        # Gantt图反推全活动调度染色体
-        chrom = []
-        k_machines = np.zeros(self.M, dtype=int)
-        start_time_list = np.array([T[machine][0][0] for machine in range(len(T))])
-        while len(chrom) < chrom_len:
-            machine_early = np.argmin(start_time_list)
-            chrom.append(T[machine_early][k_machines[machine_early]][1])
-            k_machines[machine_early] += 1
-            try:
-                start_time_list[machine_early] = T[machine_early][k_machines[machine_early]][0]
-            except IndexError:
-                start_time_list[machine_early] = math.inf
-
-        C = np.zeros((self.N, self.M))
-        T = [[[0]] for _ in range(self.M)]
-        k_jobs = np.zeros(self.N, dtype=int)
-        # 全活动调度染色体与J、P求解
-        chrom.reverse()
-        for job in chrom:
-            machine = self.J[job, k_jobs[job]] - 1
-            process_time = self.P[job, k_jobs[job]]
-            finish_time_last_job = C[job, k_jobs[job] - 1]
-
-            # 寻找空闲时段插入
-            start_time = max(finish_time_last_job, T[machine][-1][-1])
-            insert_index = len(T[machine])
-            for i in range(1, len(T[machine])):
-                gap_start = max(finish_time_last_job, T[machine][i - 1][-1])
-                gap_end = T[machine][i][0]
-                if gap_end - gap_start >= process_time:
-                    start_time = gap_start
-                    insert_index = i
-                    break
-            end_time = start_time + process_time
-            C[job, k_jobs[job]] = end_time
-            T[machine].insert(insert_index, [start_time, job, k_jobs[job], end_time])
-            k_jobs[job] += 1
-        for i in range(len(T)):
-            T[i].pop(0)
-
-        return T, C, chrom
-
     def CalculateFit(self, p):
         """
         计算适应度
@@ -286,9 +209,9 @@ class GeneticAlgorithm(JobShopProblem):
             for _ in range(n_select - keep_best):
                 random_list.append(random.random())
 
-            selection_list = np.sort(np.concatenate((fitness_proportion, np.array(random_list)), axis=0))
             index_temp = 0
             index_list = []
+            selection_list = np.sort(np.concatenate((fitness_proportion, np.array(random_list)), axis=0))
             for each_number in selection_list:
                 if each_number < fitness_proportion[index_temp]:
                     population_temp.append(self.Pop[index_temp])
@@ -301,6 +224,6 @@ class GeneticAlgorithm(JobShopProblem):
                 self.Pop = population_temp
                 self.Fit = fitness_temp
                 break
-            elif len(index_list) == list(set(index_list)):
+            elif len(index_list) == len(set(index_list)):
                 break
         return index_list

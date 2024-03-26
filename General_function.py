@@ -9,6 +9,7 @@ import numpy as np
 import random
 import os
 import json
+import math
 
 
 class JobShopProblem:
@@ -61,6 +62,83 @@ class JobShopProblem:
                     self.J[i - 1][j // 2] = data[j] + 1
                 else:
                     self.P[i - 1][j // 2] = data[j]
+
+    def Decode(self, chrom):
+        """
+        反转+贪婪插入式解码获得全活动调度
+        :param chrom: 待解码的染色体序列
+        :return T: Gantt图矩阵([起始时间, 工件号, 工序号, 结束时间])
+        :return C: 完工时间矩阵
+        """
+        chrom_len = len(chrom)
+
+        C = np.zeros((self.N, self.M))
+        T = [[[0]] for _ in range(self.M)]
+        k_jobs = np.zeros(self.N, dtype=int)
+        # 反转染色体与J、P求解
+        for job in reversed(chrom):
+            machine = self.J_R[job, k_jobs[job]] - 1
+            process_time = self.P_R[job, k_jobs[job]]
+            finish_time_last_job = C[job, k_jobs[job] - 1]
+
+            # 寻找空闲时段插入
+            start_time = max(finish_time_last_job, T[machine][-1][-1])
+            insert_index = len(T[machine])
+            for i in range(1, len(T[machine])):
+                gap_start = max(finish_time_last_job, T[machine][i - 1][-1])
+                gap_end = T[machine][i][0]
+                if gap_end - gap_start >= process_time:
+                    start_time = gap_start
+                    insert_index = i
+                    break
+            end_time = start_time + process_time
+            C[job, k_jobs[job]] = end_time
+            T[machine].insert(insert_index, [start_time, job, k_jobs[job], end_time])
+            k_jobs[job] += 1
+        for i in range(len(T)):
+            T[i].pop(0)
+
+        # Gantt图反推全活动调度染色体
+        chrom = []
+        k_machines = np.zeros(self.M, dtype=int)
+        start_time_list = np.array([T[machine][0][0] for machine in range(len(T))])
+        while len(chrom) < chrom_len:
+            machine_early = np.argmin(start_time_list)
+            chrom.append(T[machine_early][k_machines[machine_early]][1])
+            k_machines[machine_early] += 1
+            try:
+                start_time_list[machine_early] = T[machine_early][k_machines[machine_early]][0]
+            except IndexError:
+                start_time_list[machine_early] = math.inf
+
+        C = np.zeros((self.N, self.M))
+        T = [[[0]] for _ in range(self.M)]
+        k_jobs = np.zeros(self.N, dtype=int)
+        # 全活动调度染色体与J、P求解
+        chrom.reverse()
+        for job in chrom:
+            machine = self.J[job, k_jobs[job]] - 1
+            process_time = self.P[job, k_jobs[job]]
+            finish_time_last_job = C[job, k_jobs[job] - 1]
+
+            # 寻找空闲时段插入
+            start_time = max(finish_time_last_job, T[machine][-1][-1])
+            insert_index = len(T[machine])
+            for i in range(1, len(T[machine])):
+                gap_start = max(finish_time_last_job, T[machine][i - 1][-1])
+                gap_end = T[machine][i][0]
+                if gap_end - gap_start >= process_time:
+                    start_time = gap_start
+                    insert_index = i
+                    break
+            end_time = start_time + process_time
+            C[job, k_jobs[job]] = end_time
+            T[machine].insert(insert_index, [start_time, job, k_jobs[job], end_time])
+            k_jobs[job] += 1
+        for i in range(len(T)):
+            T[i].pop(0)
+
+        return T, C, chrom
 
 
 def draw_Gantt(timelist):

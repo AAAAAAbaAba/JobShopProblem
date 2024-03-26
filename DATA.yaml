@@ -9,7 +9,7 @@ GA:
   B_FIT: 0
   CROSS:
     P: 0.8
-    N: 10
+    N: 5
   MUTATION:
-    P: 0.2
+    P: 0.1
     L: 4
