@@ -13,13 +13,13 @@ import itertools
 
 
 class GeneticAlgorithm(JobShopProblem):
-    def __init__(self, target, population_size=500, k_fit=100, b_fit=0, p_cross=0.8, n_cross=2, p_mutation=0.01, l_mutation=4):
-        super().__init__(target)
+    def __init__(self, target, population_size=500, generation_total=50000, generation_truncation=15000,
+                 generation_print=500, k_fit=100, b_fit=0, p_cross=0.8, n_cross=2, p_mutation=0.01, l_mutation=4):
+        super().__init__(target, generation_total, generation_truncation, generation_print)
 
         self.PopSize = population_size  # 种群规模
         self.Pop = []  # 种群
         self.Fit = []  # 适应度列表
-        self.Gen = 0  # 迭代代数
 
         # 微调参数
         self.K_Fit = k_fit
@@ -29,49 +29,23 @@ class GeneticAlgorithm(JobShopProblem):
         self.P_Mutation = p_mutation
         self.L_Mutation = l_mutation
 
-        self.T_op = []  # 最优个体Gantt图
-        self.C_op = np.zeros((self.N, self.M))  # 最优个体完工时间矩阵
-        self.C_max = math.inf  # 最优个体最大完工时间
-        self.Ind_op = []  # 最优个体染色体
-
         self.InitiatePop()
-
-    def CreateInd(self):
-        """
-        个体染色体初始化
-        :return chromosome: 个体染色体
-        """
-        jobs_list = list(range(self.N))
-        J_temp = copy.deepcopy(self.J)
-        chromosome = []
-        while not np.all(J_temp == 0):
-            job = np.random.choice(jobs_list)
-            machine = J_temp[job, 0]
-            if machine != 0:
-                chromosome.append(job)
-                J_temp[job, :] = np.roll(J_temp[job, :], -1)
-                J_temp[job, :][-1] = 0
-            else:
-                jobs_list.remove(job)
-
-        return chromosome
 
     def InitiatePop(self):
         """
         种群初始化
         :return:
         """
+        self.C_op_max = math.inf
+        self.Pop = []
+        self.Fit = []
         for _ in range(self.PopSize):
             self.Pop.append(self.CreateInd())
 
         for i in range(self.PopSize):
-            T_temp, C_temp, self.Pop[i] = self.Decode(self.Pop[i])
-            if C_temp.max(initial=0) < self.C_max:
-                self.T_op = T_temp
-                self.C_op = C_temp
-                self.C_max = C_temp.max(initial=0)
-                self.Ind_op = copy.deepcopy(self.Pop[i])
-            self.Fit.append(self.CalculateFit(C_temp.max(initial=0)))
+            T_temp, C_temp, C_temp_max, self.Pop[i] = self.Decode(self.Pop[i])
+            self.UpdateOp(T_temp, C_temp, C_temp_max, self.Pop[i])
+            self.Fit.append(self.CalculateFit(C_temp_max))
 
     def CalculateFit(self, p):
         """
@@ -121,23 +95,13 @@ class GeneticAlgorithm(JobShopProblem):
                     Child2[i] = Parent1_in_Jobs2.pop(0)
 
             # 3.子代加入临时种群
-            T1, C1, Child1 = self.Decode(Child1)
+            T1, C1, C1_max, Child1 = self.Decode(Child1)
             population_temp.append(Child1)
-            C1_max = C1.max(initial=0)
-            if C1_max < self.C_max:
-                self.T_op = T1
-                self.C_op = C1
-                self.C_max = C1_max
-                self.Ind_op = Child1
+            self.UpdateOp(T1, C1, C1_max, Child1)
             fitness_temp.append(self.CalculateFit(C1_max))
-            T2, C2, Child2 = self.Decode(Child2)
+            T2, C2, C2_max, Child2 = self.Decode(Child2)
             population_temp.append(Child2)
-            C2_max = C2.max(initial=0)
-            if C2_max < self.C_max:
-                self.T_op = T2
-                self.C_op = C2
-                self.C_max = C2_max
-                self.Ind_op = Child2
+            self.UpdateOp(T2, C2, C2_max, Child2)
             fitness_temp.append(self.CalculateFit(C2_max))
 
         # 选择临时种群中适应度最高的2个个体进入下一代种群
@@ -172,14 +136,9 @@ class GeneticAlgorithm(JobShopProblem):
             Child_temp = copy.copy(Parent)
             for i in range(len(each_jobs)):
                 Child_temp[index_mutation[i]] = each_jobs[i]
-            T_temp, C_temp, Child_temp = self.Decode(Child_temp)
+            T_temp, C_temp, C_temp_max, Child_temp = self.Decode(Child_temp)
             population_temp.append(Child_temp)
-            C_temp_max = C_temp.max(initial=0)
-            if C_temp_max < self.C_max:
-                self.T_op = T_temp
-                self.C_op = C_temp
-                self.C_max = C_temp_max
-                self.Ind_op = Child_temp
+            self.UpdateOp(T_temp, C_temp, C_temp_max, Child_temp)
             fitness_temp.append(self.CalculateFit(C_temp_max))
 
         # 选择临时种群中适应度最高的个体进入下一代种群
@@ -187,7 +146,7 @@ class GeneticAlgorithm(JobShopProblem):
         self.Pop[Parent_index] = population_temp[index_new]
         self.Fit[Parent_index] = fitness_temp[index_new]
 
-    def ProportionalSelect(self, n_select=2, cover=False, keep_best=1):
+    def ProportionalSelect(self, n_select=2, cover_flag=False, keep_best=1):
         """
         最佳个体保存+比例选择
         :return:
@@ -198,7 +157,7 @@ class GeneticAlgorithm(JobShopProblem):
         # 保存最佳个体
         if keep_best:
             population_temp.append(self.Ind_op)
-            fitness_temp.append(self.CalculateFit(self.C_max))
+            fitness_temp.append(self.CalculateFit(self.C_op_max))
 
         # 构造比例列表
         fitness_proportion = np.array(self.Fit)
@@ -220,10 +179,28 @@ class GeneticAlgorithm(JobShopProblem):
                 elif each_number == fitness_proportion[index_temp]:
                     index_temp += 1
 
-            if cover:
+            if cover_flag:
                 self.Pop = population_temp
                 self.Fit = fitness_temp
                 break
             elif len(index_list) == len(set(index_list)):
                 break
         return index_list
+
+    def TerminationCriterion(self):
+        """
+        终止准则
+        :return:
+        """
+        if self.C_op_max == self.Optimum:
+            print(f'第{self.Gen - 1}代达到理论最优')
+            return True
+        elif self.GenerationTruncation == self.GenStuck:
+            print(f'第{self.Gen - 1}代达到局部最优')
+            print(f'--------------------------------------')
+            self.InitiatePop()
+            return False
+        elif self.Gen == self.GenerationTotal:
+            return True
+        else:
+            return False
