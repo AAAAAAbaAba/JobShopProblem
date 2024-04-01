@@ -22,13 +22,14 @@ generation_print = data['GA']['GENERATION']['PRINT']
 population_size = data['GA']['POPULATION_SIZE']
 k_fit = data['GA']['K_FIT']
 b_fit = data['GA']['B_FIT']
+p_sel = data['GA']['P_SEL']
 p_cross = data['GA']['CROSS']['P']
 n_cross = data['GA']['CROSS']['N']
 p_mutation = data['GA']['MUTATION']['P']
 l_mutation = data['GA']['MUTATION']['L']
 
 ga = GeneticAlgorithm(target, population_size, generation_total, generation_truncation, generation_print,
-                      k_fit, b_fit, p_cross, n_cross, p_mutation, l_mutation)
+                      k_fit, b_fit, p_sel, p_cross, n_cross, p_mutation, l_mutation)
 C_history = []
 print(f'数据集：{ga.Target}\n'
       f'【理论最优值：{ga.Optimum}】【n={ga.N};m={ga.M}】')
@@ -37,38 +38,36 @@ C_history.append(ga.C_op_max)
 
 while True:
     ga.Gen += 1
+    # 判断是否满足终止准则
     if ga.TerminationCriterion():
         break
 
-    # # 选择
-    # ga.ProportionalSelect(n_select=ga.PopSize, cover=True, keep_best=1)
-    #
-    # # 与最优个体进行交叉
-    # cross_index1 = np.array(ga.Fit).argmax()
-    # for _ in range(int(ga.PopSize * ga.P_Cross)):
-    #     while True:
-    #         cross_index2 = random.randint(0, ga.PopSize - 1)
-    #         if cross_index1 != cross_index2:
-    #             break
-    #     ga.Cross(cross_index1, cross_index2)
-    #
-    # # 最优个体不进行突变
-    # for _ in range(int(ga.PopSize * ga.P_Mutation)):
-    #     while True:
-    #         mutation_index = random.randint(0, ga.PopSize - 1)
-    #         if cross_index1 != mutation_index:
-    #             break
-    #     ga.Mutation(mutation_index)
+    pop_temp = [ga.Ind_op]  # 最佳个体保存
+    fit_temp = [ga.CalculateFit(ga.C_op_max)]
+    while len(pop_temp) < ga.PopSize:
+        # 选择操作
+        Parent1, Parent1_fit = ga.ProportionalSelect()  # 比例选择（轮盘赌选择）
+        while True:
+            Parent2, Parent2_fit = ga.ProportionalSelect()
+            if Parent1 != Parent2:
+                break
+        # 交叉
+        if random.random() <= ga.P_Cross:
+            Child1, Child1_fit, Child2, Child2_fit = ga.Cross(Parent1, Parent1_fit, Parent2, Parent2_fit)
+        else:
+            Child1, Child1_fit, Child2, Child2_fit = Parent1, Parent1_fit, Parent2, Parent2_fit
+        # 突变
+        if random.random() <= ga.P_Mutation:
+            Child1, Child1_fit = ga.Mutation(Child1)
+            Child2, Child2_fit = ga.Mutation(Child2)
+        pop_temp.append(Child1)
+        fit_temp.append(Child1_fit)
+        pop_temp.append(Child2)
+        fit_temp.append(Child2_fit)
 
-    # 轮盘赌选择后随机交叉
-    Parent_index1, Parent_index2 = ga.ProportionalSelect(keep_best=0, n_select=2)
-
-    if random.random() <= ga.P_Cross:
-        ga.Cross(Parent_index2, Parent_index1)
-    # 随机突变
-    elif random.random() <= ga.P_Mutation:
-        ga.Mutation(Parent_index1)
-        ga.Mutation(Parent_index2)
+    ga.T_op, ga.C_op, ga.C_op_max, ga.Ind_op = ga.Decode(pop_temp[np.array(fit_temp).argmax()])
+    ga.Pop = pop_temp
+    ga.Fit = fit_temp
 
     if ga.Gen % ga.GenerationPrint == 0:
         print(f'第{ga.Gen}代种群，Cmax={ga.C_op_max}')

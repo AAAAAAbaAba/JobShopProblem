@@ -12,11 +12,14 @@ import numpy as np
 
 
 class TabuSearch(JobShopProblem):
-    def __init__(self, target, generation_total, generation_truncation, generation_print):
+    def __init__(self, target, generation_total, generation_truncation, generation_print, ind_initiate=None):
         super().__init__(target, generation_total, generation_truncation, generation_print)
+
+        self.GenerationTruncation *= self.N
 
         self.TabuList = ListFixed()  # 禁忌表
         self.L = 0  # 禁忌表长度
+        self.EliteList = ListFixed(L=5)  # 精英解表
 
         self.T_local = []  # 当前个体Gantt图
         self.C_local = np.zeros((self.N, self.M))  # 当前个体完工时间矩阵
@@ -25,8 +28,8 @@ class TabuSearch(JobShopProblem):
         self.CriticalPath_local = []  # 当前个体关键路径
         self.CriticalPath_op = []  # 最优个体关键路径
 
-        self.InitiateInd()
         self.InitiateTabu()
+        self.InitiateInd(ind_initiate)
 
     def UpdateOp(self, T, C, C_max, Ind, CriticalPath=None):
         """
@@ -46,6 +49,7 @@ class TabuSearch(JobShopProblem):
         self.C_op_max = C_max
         self.Ind_op = Ind
         self.CriticalPath_op = CriticalPath
+        self.EliteList.append(self.Ind_op)
 
     def UpdateLocal(self, T, C, C_max, Ind, CriticalPath=None):
         """
@@ -66,18 +70,22 @@ class TabuSearch(JobShopProblem):
         self.Ind_local = Ind
         self.CriticalPath_local = CriticalPath
 
-    def InitiateInd(self):
+    def InitiateInd(self, ind_initiate=None, keep_op=False):
         """
         随机生成初始解
+        :param ind_initiate:
+        :param keep_op:
         :return:
         """
-        self.Ind_local = self.CreateInd()
+        if ind_initiate is None:
+            self.Ind_local = self.CreateInd()
+        else:
+            self.Ind_local = ind_initiate
         self.T_local, self.C_local, self.C_local_max, self.Ind_local = self.Decode(self.Ind_local)
         self.CriticalPath_local = self.GetCriticalPath(self.T_local, self.C_local_max)
 
-        # self.T_op, self.C_op, self.C_op_max, self.Ind_op, self.CriticalPath_op = \
-        #     self.T_local, self.C_local, self.C_local_max, self.Ind_local, self.CriticalPath_local
-        self.UpdateOp(self.T_local, self.C_local, self.C_local_max, self.Ind_local, self.CriticalPath_local)
+        if not keep_op:
+            self.UpdateOp(self.T_local, self.C_local, self.C_local_max, self.Ind_local, self.CriticalPath_local)
 
     def InitiateTabu(self):
         L = 10 + self.N / self.M
@@ -282,18 +290,22 @@ class TabuSearch(JobShopProblem):
         :return:
         """
         if self.C_op_max == self.Optimum:
-            print(f'第{self.Gen - 1}代达到理论最优')
-            return True
+            # print(f'第{self.Gen - 1}代达到理论最优')
+            return 1
         elif self.GenerationTruncation == self.GenStuck:
-            print(f'第{self.Gen - 1}代达到局部最优')
-            print(f'--------------------------------------')
-            self.InitiateInd()
-            self.InitiateTabu()
-            return False
-        elif self.Gen == self.GenerationTotal:
-            return True
+            # print(f'第{self.Gen - 1}代达到局部最优')
+            # print(f'--------------------------------------')
+            try:
+                self.GenStuck = 0
+                self.InitiateInd(ind_initiate=self.EliteList.pop(), keep_op=True)
+                self.InitiateTabu()
+                return 0
+            except IndexError:
+                return 2
+        # elif self.Gen == self.GenerationTotal:
+        #     return True
         else:
-            return False
+            return 0
 
 
 class ListFixed(list):

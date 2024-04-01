@@ -4,6 +4,7 @@
 @File: JSP_TS.py
 @IDE: PyCharm
 """
+
 from General_function import *
 from GA_function import *
 from TS_function import *
@@ -17,7 +18,7 @@ with open(file='DATA.yaml', mode='r', encoding='UTF-8') as f:
 target = data['TARGET']
 generation_total = data['TS']['GENERATION']['TOTAL']
 generation_truncation = data['TS']['GENERATION']['TRUNCATION']
-generation_print = data['GA']['GENERATION']['PRINT']
+generation_print = data['TS']['GENERATION']['PRINT']
 
 ts = TabuSearch(target, generation_total, generation_truncation, generation_print)
 C_history = []
@@ -25,7 +26,7 @@ print(f'数据集：{ts.Target}\n'
       f'【理论最优值：{ts.Optimum}】【n={ts.N};m={ts.M}】')
 print(f'第0代种群，Cmax={ts.C_op_max}')
 C_history.append(ts.C_op_max)
-flag = [0, 0, 0]
+flag = [0, 0, 0, 0]
 
 while True:
     ts.Gen += 1
@@ -72,6 +73,7 @@ while True:
             ts.UpdateLocal(T_temp, C_temp, C_temp_max, Ind_temp, CriticalPath_temp)
             flag[2] += 1
             ts.GenStuck += 1
+        flag[3] += 1
 
     if ts.Gen % ts.GenerationPrint == 0:
         print(f'第{ts.Gen}代种群，Cmax={ts.C_op_max}')

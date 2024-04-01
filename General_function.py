@@ -255,7 +255,7 @@ class JobShopProblem:
         """
         if CriticalPath is None:
             pass
-        if C_max < self.C_op_max:
+        if C_max <= self.C_op_max:
             self.T_op = T
             self.C_op = C
             self.C_op_max = C_max

@@ -1,21 +1,23 @@
-TARGET: "ft10"
+TARGET: "la07"
 
 GA:
   GENERATION:
-    TOTAL: 1e5
-    TRUNCATION: 1000
-    PRINT: 50
-  POPULATION_SIZE: 500
-  K_FIT: 100
+    TOTAL: 1000
+    TRUNCATION: 30
+    PRINT: 1
+  POPULATION_SIZE: 10
+  K_FIT: 1000
   B_FIT: 0
+  P_SEL: 0.8
   CROSS:
     P: 0.8
-    N: 5
+    N: 10
   MUTATION:
     P: 0.1
-    L: 4
+    L: 2
 
 TS:
   GENERATION:
     TOTAL: 1e6
     TRUNCATION: 100
+    PRINT: 50
